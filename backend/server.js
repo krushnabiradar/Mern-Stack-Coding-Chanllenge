@@ -4,7 +4,7 @@ import express from "express";
 // import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import Transaction from "./model/Transaction.js";
-// import axios from "axios";
+import axios from "axios";
 
 const server = express();
 
@@ -232,44 +232,48 @@ server.get("/pie-chart", async (req, res) => {
   }
 });
 
-// //Combined Response API
-// server.get("/combined-response", async (req, res) => {
-//   const { month } = req.query;
+const TRANSACTION_API_URL = "http://localhost:3000/transactions";
+const STATISTICS_API_URL = "http://localhost:3000/statistics";
+const BAR_CHART_API_URL = "http://localhost:3000/bar-chart";
+const PIE_CHART_API_URL = "http://localhost:3000/pie-chart";
 
-//   if (!month) {
-//     return res.status(400).json({ error: "Month parameter is required" });
-//   }
+server.get("/combined-response", async (req, res) => {
+  const { month } = req.query;
 
-//   try {
-//     // Make HTTP GET requests to each API
-//     const transactionsResponse = await axios.get(
-//       `/transactions?month=${month}`
-//     );
-//     const statisticsResponse = await axios.get(`/statistics?month=${month}`);
-//     const barChartResponse = await axios.get(`/bar-chart?month=${month}`);
-//     const pieChartResponse = await axios.get(`/pie-chart?month=${month}`);
+  if (!month) {
+    return res.status(400).json({ error: "Month parameter is required" });
+  }
 
-//     // Extract data from responses
-//     const transactions = transactionsResponse.data;
-//     const statistics = statisticsResponse.data;
-//     const barChart = barChartResponse.data;
-//     const pieChart = pieChartResponse.data;
+  try {
+    // Make HTTP GET requests to each API
+    const transactionsResponse = await axios.get(`${TRANSACTION_API_URL}?month=${month}`);
+    const statisticsResponse = await axios.get(`${STATISTICS_API_URL}?month=${month}`);
+    const barChartResponse = await axios.get(`${BAR_CHART_API_URL}?month=${month}`);
+    const pieChartResponse = await axios.get(`${PIE_CHART_API_URL}?month=${month}`);
 
-//     // Combine responses into final JSON
-//     const combinedResponse = {
-//       transactions,
-//       statistics,
-//       barChart,
-//       pieChart,
-//     };
+    // Extract data from responses
+    const transactions = transactionsResponse.data;
+    const statistics = statisticsResponse.data;
+    const barChart = barChartResponse.data;
+    const pieChart = pieChartResponse.data;
 
-//     // Send final combined response
-//     res.json(combinedResponse);
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// });
+    // Combine responses into final JSON
+    const combinedResponse = {
+      transactions,
+      statistics,
+      barChart,
+      pieChart,
+    };
+
+    // Send final combined response
+    res.json(combinedResponse);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 
 server.listen(PORT, () => {
   console.log("Listening on port ->" + PORT);
