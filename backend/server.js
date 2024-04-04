@@ -145,7 +145,7 @@ server.get("/bar-chart", async (req, res) => {
   try {
     // Calculate the month index
     const monthIndex = new Date(`${month} 1, 2000`).getMonth() + 1;
-    console.log("Month Index:", monthIndex);
+    // console.log("Month Index:", monthIndex);
 
     // Define price ranges
     const priceRanges = [
@@ -160,7 +160,7 @@ server.get("/bar-chart", async (req, res) => {
       { min: 801, max: 900 },
       { min: 901, max: Infinity },
     ];
-    console.log("Price Ranges:", priceRanges);
+    // console.log("Price Ranges:", priceRanges);
 
     // Retrieve count for each price range
     const results = await Promise.all(
@@ -172,7 +172,7 @@ server.get("/bar-chart", async (req, res) => {
             $lt: new Date(`2000-${monthIndex + 1}-01`),
           },
         });
-        console.log(`Count for ${range.min}-${range.max}:`, count);
+        // console.log(`Count for ${range.min}-${range.max}:`, count);
         return count;
       })
     );
@@ -185,7 +185,7 @@ server.get("/bar-chart", async (req, res) => {
           : `${range.min}-${range.max}`;
       return { priceRange: label, count: results[index] };
     });
-    console.log("Response Data:", responseData);
+    // console.log("Response Data:", responseData);
 
     // Send response
     res.json(responseData);
@@ -232,10 +232,14 @@ server.get("/pie-chart", async (req, res) => {
   }
 });
 
+//combined response API
+
 const TRANSACTION_API_URL = "http://localhost:3000/transactions";
 const STATISTICS_API_URL = "http://localhost:3000/statistics";
 const BAR_CHART_API_URL = "http://localhost:3000/bar-chart";
 const PIE_CHART_API_URL = "http://localhost:3000/pie-chart";
+
+
 
 server.get("/combined-response", async (req, res) => {
   const { month } = req.query;
