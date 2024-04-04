@@ -119,9 +119,9 @@ const TransactionsList = () => {
                   <td>{transaction.id}</td>
                   <td>{transaction.title}</td>
                   <td>{transaction.description}</td>
-                  <td>{transaction.price}</td>
+                  <td>{transaction.price.toFixed(2)}</td>
                   <td>{transaction.category}</td>
-                  <td>{transaction.sold}</td>
+                  <td>{transaction.sold ? "Not Available" : "Available"}</td>
                   <td>
                     <img src={transaction.image} alt={transaction.title} />
                   </td>
