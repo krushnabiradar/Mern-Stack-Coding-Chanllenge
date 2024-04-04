@@ -8,7 +8,6 @@ import axios from "axios";
 
 const server = express();
 
-
 server.use(express.json());
 server.use(cors());
 
@@ -47,6 +46,9 @@ connectToDatabase();
 // initializeDatabase();
 
 // List All Transactions API with Search, Pagination, and Month Filtering
+
+// transaction API
+
 server.get("/transactions", async (req, res) => {
   const { search, page = 1, perPage = 10, month } = req.query;
 
@@ -104,21 +106,19 @@ server.get("/statistics", async (req, res) => {
         },
       },
       {
-        $group: {
-          _id: null,
-          totalSaleAmount: { $sum: "$price" },
-          totalSoldItems: {
-            $sum: {
-              $cond: [{ $eq: ["$sold", true] }, 1, 0],
-            },
-          },
-          totalNotSoldItems: {
-            $sum: {
-              $cond: [{ $eq: ["$sold", false] }, 1, 0],
-            },
-          },
-        },
+    $group: {
+      _id: {
+        $switch: {
+          branches: priceRanges.map((range, index) => ({
+            case: { $and: [{ $gte: ["$price", range.min] }, { $lt: ["$price", range.max] }] },
+            then: index
+          })),
+          default: priceRanges.length - 1
+        }
       },
+      count: { $sum: 1 }
+    }
+  }
     ]);
 
     res.json(
@@ -142,11 +142,9 @@ server.get("/bar-chart", async (req, res) => {
     return res.status(400).json({ error: "Month parameter is required" });
   }
 
-  try {
-    // Calculate the month index
-    const monthIndex = new Date(`${month} 1, 2000`).getMonth() + 1;
-    // console.log("Month Index:", monthIndex);
+  const monthIndex = new Date(`${month} 1, 2000`).getMonth() + 1;
 
+  try {
     // Define price ranges
     const priceRanges = [
       { min: 0, max: 100 },
@@ -160,22 +158,34 @@ server.get("/bar-chart", async (req, res) => {
       { min: 801, max: 900 },
       { min: 901, max: Infinity },
     ];
-    // console.log("Price Ranges:", priceRanges);
 
-    // Retrieve count for each price range
-    const results = await Promise.all(
-      priceRanges.map(async (range) => {
-        const count = await Transaction.countDocuments({
-          price: { $gte: range.min, $lte: range.max },
-          dateOfSale: {
-            $gte: new Date(`2000-${monthIndex}-01`),
-            $lt: new Date(`2000-${monthIndex + 1}-01`),
+    const data = await Transaction.aggregate([
+      {
+        $addFields: {
+          month: { $month: "$dateOfSale" },
+        },
+      },
+      {
+        $match: {
+          month: monthIndex,
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $switch: {
+              branches: priceRanges.map((range, index) => ({
+                case: { $and: [{ $gte: ["$price", range.min] }, { $lt: ["$price", range.max] }] },
+                then: index
+              })),
+              default: priceRanges.length - 1
+            }
           },
-        });
-        // console.log(`Count for ${range.min}-${range.max}:`, count);
-        return count;
-      })
-    );
+          count: { $sum: 1 }
+        }
+      }
+
+    ]);
 
     // Construct response data
     const responseData = priceRanges.map((range, index) => {
@@ -183,9 +193,9 @@ server.get("/bar-chart", async (req, res) => {
         index === priceRanges.length - 1
           ? "901-above"
           : `${range.min}-${range.max}`;
-      return { priceRange: label, count: results[index] };
+      const count = data.find(item => item._id === index)?.count || 0; // Accessing count from data array
+      return { priceRange: label, count };
     });
-    // console.log("Response Data:", responseData);
 
     // Send response
     res.json(responseData);
@@ -194,6 +204,7 @@ server.get("/bar-chart", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 //Pie-chart API
 server.get("/pie-chart", async (req, res) => {
@@ -239,8 +250,6 @@ const STATISTICS_API_URL = "http://localhost:3000/statistics";
 const BAR_CHART_API_URL = "http://localhost:3000/bar-chart";
 const PIE_CHART_API_URL = "http://localhost:3000/pie-chart";
 
-
-
 server.get("/combined-response", async (req, res) => {
   const { month } = req.query;
 
@@ -250,10 +259,18 @@ server.get("/combined-response", async (req, res) => {
 
   try {
     // Make HTTP GET requests to each API
-    const transactionsResponse = await axios.get(`${TRANSACTION_API_URL}?month=${month}`);
-    const statisticsResponse = await axios.get(`${STATISTICS_API_URL}?month=${month}`);
-    const barChartResponse = await axios.get(`${BAR_CHART_API_URL}?month=${month}`);
-    const pieChartResponse = await axios.get(`${PIE_CHART_API_URL}?month=${month}`);
+    const transactionsResponse = await axios.get(
+      `${TRANSACTION_API_URL}?month=${month}`
+    );
+    const statisticsResponse = await axios.get(
+      `${STATISTICS_API_URL}?month=${month}`
+    );
+    const barChartResponse = await axios.get(
+      `${BAR_CHART_API_URL}?month=${month}`
+    );
+    const pieChartResponse = await axios.get(
+      `${PIE_CHART_API_URL}?month=${month}`
+    );
 
     // Extract data from responses
     const transactions = transactionsResponse.data;
@@ -276,8 +293,6 @@ server.get("/combined-response", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-
 
 server.listen(PORT, () => {
   console.log("Listening on port ->" + PORT);
