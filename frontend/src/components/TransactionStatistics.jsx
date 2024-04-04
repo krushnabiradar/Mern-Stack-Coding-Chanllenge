@@ -71,9 +71,7 @@ const TransactionsStatistics = () => {
           <div>Error fetching statistics</div>
         ) : (
           <>
-            <div>
-              Total Sale Amount: {statistics.totalSaleAmount.toFixed(2)}
-            </div>
+            <div>Total Sale Amount: {statistics.totalSaleAmount.toFixed(2)}</div>
             <div>Total Sold Items: {statistics.totalSoldItems}</div>
             <div>Total Not Sold Items: {statistics.totalNotSoldItems}</div>
           </>

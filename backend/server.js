@@ -2,9 +2,9 @@ import cors from "cors";
 import "dotenv/config";
 import express from "express";
 // import jwt from "jsonwebtoken";
+import axios from "axios";
 import mongoose from "mongoose";
 import Transaction from "./model/Transaction.js";
-import axios from "axios";
 
 const server = express();
 
@@ -84,53 +84,54 @@ server.get("/transactions", async (req, res) => {
 });
 
 // Statistics API
-server.get("/statistics", async (req, res) => {
+server.get('/statistics', async (req, res) => {
   const { month } = req.query;
 
   if (!month) {
-    return res.status(400).json({ error: "Month parameter is required" });
+      return res.status(400).json({ error: "Month parameter is required" });
   }
 
   const monthIndex = new Date(`${month} 1, 2000`).getMonth() + 1;
 
   try {
-    const statistics = await Transaction.aggregate([
-      {
-        $addFields: {
-          month: { $month: "$dateOfSale" },
-        },
-      },
-      {
-        $match: {
-          month: monthIndex,
-        },
-      },
-      {
-    $group: {
-      _id: {
-        $switch: {
-          branches: priceRanges.map((range, index) => ({
-            case: { $and: [{ $gte: ["$price", range.min] }, { $lt: ["$price", range.max] }] },
-            then: index
-          })),
-          default: priceRanges.length - 1
-        }
-      },
-      count: { $sum: 1 }
-    }
-  }
-    ]);
+      const statistics = await Transaction.aggregate([
+          {
+              $addFields: {
+                  month: { $month: "$dateOfSale" },
+              },
+          },
+          {
+              $match: {
+                  month: monthIndex,
+              },
+          },
+          {
+              $group: {
+                  _id: null,
+                  totalSaleAmount: { $sum: "$price" },
+                  totalSoldItems: { $sum: 1 },
+              },
+          },
+          {
+              $project: {
+                  _id: 0,
+                  totalSaleAmount: 1,
+                  totalSoldItems: 1,
+                  totalNotSoldItems: { $subtract: [0, "$totalSoldItems"] }, // Calculate totalNotSoldItems by subtracting totalSoldItems from total number of transactions
+              },
+          },
+      ]);
 
-    res.json(
-      statistics[0] || {
-        totalSaleAmount: 0,
-        totalSoldItems: 0,
-        totalNotSoldItems: 0,
-      }
-    );
+      res.json(
+          statistics[0] || {
+              totalSaleAmount: 0,
+              totalSoldItems: 0,
+              totalNotSoldItems: 0,
+          }
+      );
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
   }
 });
 
@@ -175,16 +176,20 @@ server.get("/bar-chart", async (req, res) => {
           _id: {
             $switch: {
               branches: priceRanges.map((range, index) => ({
-                case: { $and: [{ $gte: ["$price", range.min] }, { $lt: ["$price", range.max] }] },
-                then: index
+                case: {
+                  $and: [
+                    { $gte: ["$price", range.min] },
+                    { $lt: ["$price", range.max] },
+                  ],
+                },
+                then: index,
               })),
-              default: priceRanges.length - 1
-            }
+              default: priceRanges.length - 1,
+            },
           },
-          count: { $sum: 1 }
-        }
-      }
-
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     // Construct response data
@@ -193,7 +198,7 @@ server.get("/bar-chart", async (req, res) => {
         index === priceRanges.length - 1
           ? "901-above"
           : `${range.min}-${range.max}`;
-      const count = data.find(item => item._id === index)?.count || 0; // Accessing count from data array
+      const count = data.find((item) => item._id === index)?.count || 0; // Accessing count from data array
       return { priceRange: label, count };
     });
 
@@ -204,7 +209,6 @@ server.get("/bar-chart", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 //Pie-chart API
 server.get("/pie-chart", async (req, res) => {

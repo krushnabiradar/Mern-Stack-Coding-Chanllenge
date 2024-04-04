@@ -130,6 +130,17 @@
     margin-left: auto;
     margin-right: auto;
   }
+  .bar-chart{
+    height: 500px;
+    width: 500px;
+    border: 2px solid black;
+    margin-top: 20px;
+    background-color: #edf6f6;
+    border-radius: 20px;
+    margin-left: auto;
+    margin-right: auto;
+
+  }
   .pie-chart {
     height: 500px;
     width: 500px;
