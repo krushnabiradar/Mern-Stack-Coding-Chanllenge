@@ -47,8 +47,6 @@ connectToDatabase();
 
 // List All Transactions API with Search, Pagination, and Month Filtering
 
-// transaction API
-
 server.get("/transactions", async (req, res) => {
   const { search, page = 1, perPage = 10, month } = req.query;
 
