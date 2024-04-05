@@ -86,52 +86,59 @@ server.get('/statistics', async (req, res) => {
   const { month } = req.query;
 
   if (!month) {
-      return res.status(400).json({ error: "Month parameter is required" });
+    return res.status(400).json({ error: "Month parameter is required" });
   }
 
   const monthIndex = new Date(`${month} 1, 2000`).getMonth() + 1;
 
   try {
-      const statistics = await Transaction.aggregate([
-          {
-              $addFields: {
-                  month: { $month: "$dateOfSale" },
-              },
-          },
-          {
-              $match: {
-                  month: monthIndex,
-              },
-          },
-          {
-              $group: {
-                  _id: null,
-                  totalSaleAmount: { $sum: "$price" },
-                  totalSoldItems: { $sum: 1 },
-              },
-          },
-          {
-              $project: {
-                  _id: 0,
-                  totalSaleAmount: 1,
-                  totalSoldItems: 1,
-                  totalNotSoldItems: { $subtract: [0, "$totalSoldItems"] }, // Calculate totalNotSoldItems by subtracting totalSoldItems from total number of transactions
-              },
-          },
-      ]);
+    const statistics = await Transaction.aggregate([
+      {
+        $addFields: {
+          month: { $month: "$dateOfSale" },
+        },
+      },
+      {
+        $match: {
+          month: monthIndex,
+        },
+      },
+      {
+        $group: {
+          _id: "$sold",
+          totalSaleAmount: { $sum: { $cond: ["$sold", "$price", 0] } },
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSaleAmount: { $sum: "$totalSaleAmount" },
+          totalSoldItems: { $sum: { $cond: [{ $eq: ["$_id", true] }, "$count", 0] } },
+          totalNotSoldItems: { $sum: { $cond: [{ $eq: ["$_id", false] }, "$count", 0] } },
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalSaleAmount: 1,
+          totalSoldItems: 1,
+          totalNotSoldItems: 1,
+        },
+      },
+    ]);
 
-      res.json(
-          statistics[0] || {
-              totalSaleAmount: 0,
-              totalSoldItems: 0,
-              totalNotSoldItems: 0,
-          }
-      );
+    res.json(statistics[0] || {
+      totalSaleAmount: 0,
+      totalSoldItems: 0,
+      totalNotSoldItems: 0,
+    });
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Internal server error" });
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 // API endpoint for bar chart
 server.get("/bar-chart", async (req, res) => {
